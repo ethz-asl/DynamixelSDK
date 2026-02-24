@@ -30,30 +30,6 @@
 
 #include "port_handler_linux.h"
 
-#define LATENCY_TIMER  16  // msec (USB latency timer)
-                           // You should adjust the latency timer value. From the version Ubuntu 16.04.2, the default latency timer of the usb serial is '16 msec'.
-                           // When you are going to use sync / bulk read, the latency timer should be loosen.
-                           // the lower latency timer value, the faster communication speed.
-
-                           // Note:
-                           // You can check its value by:
-                           // $ cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
-                           //
-                           // If you think that the communication is too slow, type following after plugging the usb in to change the latency timer
-                           //
-                           // Method 1. Type following (you should do this everytime when the usb once was plugged out or the connection was dropped)
-                           // $ echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
-                           // $ cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
-                           //
-                           // Method 2. If you want to set it as be done automatically, and don't want to do above everytime, make rules file in /etc/udev/rules.d/. For example,
-                           // $ echo ACTION==\"add\", SUBSYSTEM==\"usb-serial\", DRIVER==\"ftdi_sio\", ATTR{latency_timer}=\"1\" > 99-dynamixelsdk-usb.rules
-                           // $ sudo cp ./99-dynamixelsdk-usb.rules /etc/udev/rules.d/
-                           // $ sudo udevadm control --reload-rules
-                           // $ sudo udevadm trigger --action=add
-                           // $ cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
-                           //
-                           // or if you have another good idea that can be an alternatives,
-                           // please give us advice via github issue https://github.com/ROBOTIS-GIT/DynamixelSDK/issues
 
 struct termios2 {
   tcflag_t c_iflag;       /* input mode flags */
@@ -161,7 +137,7 @@ int PortHandlerLinux::writePort(uint8_t *packet, int length)
 void PortHandlerLinux::setPacketTimeout(uint16_t packet_length)
 {
   packet_start_time_  = getCurrentTime();
-  packet_timeout_     = (tx_time_per_byte * (double)packet_length) + (LATENCY_TIMER * 2.0) + 2.0;
+  packet_timeout_     = (tx_time_per_byte * (double)packet_length) + (latency_timer_ * 2.0) + 2.0;
 }
 
 void PortHandlerLinux::setPacketTimeout(double msec)
@@ -312,6 +288,16 @@ int PortHandlerLinux::getCFlagBaud(int baudrate)
     default:
       return -1;
   }
+}
+
+void PortHandlerLinux::setLatencyTimer(const int latency_timer)
+{
+  latency_timer_ = latency_timer;
+}
+
+int PortHandlerLinux::getLatencyTimer() const
+{
+  return latency_timer_;
 }
 
 #endif
