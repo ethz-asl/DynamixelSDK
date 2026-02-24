@@ -204,6 +204,8 @@ class PortHandlerLinux : public PortHandler
   /// @description The function checks whether current time is passed by the time of packet timeout from the time set by PortHandlerLinux::setPacketTimeout().
   ////////////////////////////////////////////////////////////////////////////////
   bool    isPacketTimeout();
+
+  int getPacketTimeout();
 };
 
 }

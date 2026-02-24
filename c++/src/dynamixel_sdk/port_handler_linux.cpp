@@ -300,4 +300,8 @@ int PortHandlerLinux::getLatencyTimer() const
   return latency_timer_;
 }
 
+int PortHandlerLinux::getPacketTimeout() {
+  return packet_timeout_;
+}
+
 #endif
