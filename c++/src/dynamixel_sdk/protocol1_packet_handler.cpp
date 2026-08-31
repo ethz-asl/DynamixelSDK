@@ -167,7 +167,13 @@ int Protocol1PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket, bool 
 
   while(true)
   {
-    rx_length += port->readPort(&rxpacket[rx_length], wait_length - rx_length);
+    const int bytes_read = port->readPort(&rxpacket[rx_length], wait_length - rx_length);
+    if(bytes_read < 0)
+    {
+      result = COMM_RX_FAIL;
+      break;
+    }
+    rx_length += static_cast<uint8_t>(bytes_read);
     if (rx_length >= wait_length)
     {
       uint8_t idx = 0;

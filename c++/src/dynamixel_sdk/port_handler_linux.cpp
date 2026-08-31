@@ -18,6 +18,8 @@
 
 #if defined(__linux__)
 
+#include <errno.h>
+#include <poll.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
@@ -126,7 +128,59 @@ int PortHandlerLinux::getBytesAvailable()
 
 int PortHandlerLinux::readPort(uint8_t *packet, int length)
 {
-  return read(socket_fd_, packet, length);
+  while(true)
+  {
+    if(packet_timeout_ > 0.0)
+    {
+      const double remaining_ms = packet_timeout_ - getTimeSinceStart();
+      if(remaining_ms <= 0.0)
+        return 0;
+
+      const int64_t remaining_ns = static_cast<int64_t>(remaining_ms * 1000000.0);
+      struct timespec timeout;
+      timeout.tv_sec = remaining_ns / 1000000000;
+      timeout.tv_nsec = remaining_ns % 1000000000;
+
+      struct pollfd descriptor;
+      descriptor.fd = socket_fd_;
+      descriptor.events = POLLIN;
+      descriptor.revents = 0;
+
+      const int poll_result = ppoll(&descriptor, 1, &timeout, 0);
+      if(poll_result == 0)
+        return 0;
+      if(poll_result < 0)
+      {
+        if(errno == EINTR)
+          continue;
+        return -1;
+      }
+      if(descriptor.revents & POLLNVAL)
+      {
+        errno = EBADF;
+        return -1;
+      }
+      if((descriptor.revents & POLLIN) == 0 &&
+         (descriptor.revents & (POLLERR | POLLHUP)) != 0)
+      {
+        errno = EIO;
+        return -1;
+      }
+    }
+
+    const int bytes_read = read(socket_fd_, packet, length);
+    if(bytes_read >= 0)
+      return bytes_read;
+    if(errno == EINTR)
+      continue;
+    if(errno == EAGAIN || errno == EWOULDBLOCK)
+    {
+      if(packet_timeout_ > 0.0)
+        continue;
+      return 0;
+    }
+    return -1;
+  }
 }
 
 int PortHandlerLinux::writePort(uint8_t *packet, int length)
@@ -159,7 +213,7 @@ bool PortHandlerLinux::isPacketTimeout()
 double PortHandlerLinux::getCurrentTime()
 {
 	struct timespec tv;
-	clock_gettime(CLOCK_REALTIME, &tv);
+	clock_gettime(CLOCK_MONOTONIC, &tv);
 	return ((double)tv.tv_sec * 1000.0 + (double)tv.tv_nsec * 0.001 * 0.001);
 }
 

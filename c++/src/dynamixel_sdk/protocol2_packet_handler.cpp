@@ -313,7 +313,13 @@ int Protocol2PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket, bool 
 
   while(true)
   {
-    rx_length += port->readPort(&rxpacket[rx_length], wait_length - rx_length);
+    const int bytes_read = port->readPort(&rxpacket[rx_length], wait_length - rx_length);
+    if(bytes_read < 0)
+    {
+      result = COMM_RX_FAIL;
+      break;
+    }
+    rx_length += static_cast<uint16_t>(bytes_read);
     if (rx_length >= wait_length)
     {
       uint16_t idx = 0;
@@ -405,7 +411,7 @@ int Protocol2PacketHandler::rxPacket(PortHandler *port, uint8_t *rxpacket, bool 
         break;
       }
     }
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__APPLE__)
     usleep(0);
 #elif defined(_WIN32) || defined(_WIN64)
     Sleep(0);
@@ -530,7 +536,13 @@ int Protocol2PacketHandler::broadcastPing(PortHandler *port, std::vector<uint8_t
 
   while(1)
   {
-    rx_length += port->readPort(&rxpacket[rx_length], wait_length - rx_length);
+    const int bytes_read = port->readPort(&rxpacket[rx_length], wait_length - rx_length);
+    if(bytes_read < 0)
+    {
+      result = COMM_RX_FAIL;
+      break;
+    }
+    rx_length += static_cast<uint16_t>(bytes_read);
     if (port->isPacketTimeout() == true)// || rx_length >= wait_length)
       break;
   }
